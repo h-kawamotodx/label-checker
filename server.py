@@ -4,6 +4,23 @@ import os
 
 app = Flask(__name__)
 
+def normalize_text(text):
+    text = text.upper()
+    text = text.replace("O", "0")
+    text = text.replace("B", "8")
+    text = text.replace("I", "1")
+    text = text.replace("S", "5")
+    return text
+
+
+def extract_code(text):
+    text = normalize_text(text)
+    nums = re.findall(r"\d{3}", text)
+    if nums:
+        return nums[-1]
+    return None
+
+
 @app.route("/check", methods=["POST"])
 def check():
     data = request.json
@@ -11,26 +28,24 @@ def check():
     text1 = data.get("text1", "")
     text2 = data.get("text2", "")
 
-    # 3桁抽出
-    nums1 = re.findall(r"\d{3}", text1)
-    nums2 = re.findall(r"\d{3}", text2)
-
-    code1 = nums1[-1] if nums1 else None
-    code2 = nums2[-1] if nums2 else None
+    code1 = extract_code(text1)
+    code2 = extract_code(text2)
 
     if not code1 or not code2:
-        return jsonify({"result": "⚠️ 読み取り失敗"})
-
-    if code1 == code2:
+        result = "⚠️ 読み取り失敗"
+    elif code1 == code2:
         result = "✅ OK"
     else:
         result = "❌ NG"
 
     return jsonify({
-        "shipping": code1,
-        "case": code2,
+        "raw_text1": text1,   # ← OCR元データ
+        "raw_text2": text2,   # ← OCR元データ
+        "code1": code1,
+        "code2": code2,
         "result": result
     })
+
 
 @app.route("/")
 def home():
