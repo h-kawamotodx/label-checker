@@ -14,7 +14,7 @@ def normalize_text(text):
     return text
 
 
-# ✅ 3桁抽出（どこでもOK・最後を採用）
+# ✅ 3桁抽出
 def extract_code(text):
     text = normalize_text(text)
 
@@ -38,18 +38,27 @@ def check():
     # ✅ 読み取り失敗
     if not code1 or not code2:
         return jsonify({
-            "result": "⚠️ 読み取り失敗"
+            "result": "⚠️ 読み取り失敗",
+            "text1": text1,
+            "text2": text2,
+            "code1": code1,
+            "code2": code2
         })
 
-    # ✅ 判定（シンプル）
+    # ✅ 判定
     if code1 == code2:
-        return jsonify({
-            "result": "✅ OK"
-        })
+        result = "✅ OK"
     else:
-        return jsonify({
-            "result": "❌ NG"
-        })
+        result = "❌ NG"
+
+    # ✅ 表示（ここ追加🔥）
+    return jsonify({
+        "text1": text1,
+        "text2": text2,
+        "code1": code1,
+        "code2": code2,
+        "result": result
+    })
 
 
 @app.route("/")
