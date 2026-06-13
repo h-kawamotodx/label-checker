@@ -4,6 +4,7 @@ import os
 
 app = Flask(__name__)
 
+
 # ✅ OCR誤認識補正
 def normalize_text(text):
     text = text.upper()
@@ -25,17 +26,22 @@ def extract_code(text):
     return None
 
 
-# ✅ ラベル種類判定（安定版）
+# ✅ ラベル種類判定（最終安定ロジック）
 def detect_type(text):
     text = normalize_text(text)
 
-    # 🔥 Shipping判定（重要：柔軟に対応）
-    # CASE と NO が両方含まれていればOK
-    if "CASE" in text and "NO" in text:
+    # 🔥 Shipping判定（かなり厳密に）
+    # 「CASE-NO」または「CASE NO」を見つける
+    if "CASE-NO" in text or "CASE NO" in text:
         return "SHIPPING"
 
-    # ✅ Caseラベル（末尾3桁）
-    if re.search(r"\d{3}$", text):
+    # 🔥 Case判定（KMX + 末尾3桁）
+    if "KMX" in text and re.search(r"\d{3}$", text):
+        return "CASE"
+
+    # 🔥 fallback（最後の保険）
+    # KMXがあればCASE寄りにする
+    if "KMX" in text:
         return "CASE"
 
     return "UNKNOWN"
@@ -56,7 +62,7 @@ def check():
     code1 = extract_code(text1)
     code2 = extract_code(text2)
 
-    # 🔴 同じ種類チェック（これがメイン）
+    # 🔴 同じ種類チェック
     if type1 == type2:
         return jsonify({
             "result": "⚠️ 同じ種類のラベルです",
@@ -64,7 +70,7 @@ def check():
             "type2": type2
         })
 
-    # 🔴 OCR失敗チェック
+    # 🔴 読み取り失敗
     if not code1 or not code2:
         return jsonify({
             "result": "⚠️ 読み取り失敗",
