@@ -15,13 +15,30 @@ def normalize_text(text):
     return text
 
 
-# ✅ 3桁抽出
-def extract_code(text):
+# ✅ Case用（バーコード末尾3桁）
+def extract_case_code(text):
     text = normalize_text(text)
 
-    nums = re.findall(r"\d{3}", text)
+    match = re.search(r"\d{3}$", text)
+    if match:
+        return match.group()
+
+    return None
+
+
+# ✅ Shipping用（CASE-NO付近の3桁）
+def extract_shipping_code(text):
+    text = normalize_text(text)
+
+    # CASE-NO周辺を優先して探す
+    match = re.search(r"CASE.*?(\d{3})", text)
+    if match:
+        return match.group(1)
+
+    # fallback（単独3桁）
+    nums = re.findall(r"\b\d{3}\b", text)
     if nums:
-        return nums[-1]
+        return nums[0]
 
     return None
 
@@ -33,31 +50,41 @@ def check():
     text1 = data.get("text1", "")
     text2 = data.get("text2", "")
 
-    code1 = extract_code(text1)
-    code2 = extract_code(text2)
+    # ✅ 両方から「Case」「Shipping」両方抽出してみる
+    case1 = extract_case_code(text1)
+    case2 = extract_case_code(text2)
 
-    # ✅ デバッグ用（確認したいとき用）
-    # return jsonify({"text1": text1, "text2": text2})
+    ship1 = extract_shipping_code(text1)
+    ship2 = extract_shipping_code(text2)
 
-    # ✅ 読み取り失敗
-    if not code1 or not code2:
+    # ✅ 正しい組み合わせはこれだけ
+    # Case側の数字 = Shipping側の数字
+
+    pairs = [
+        (case1, ship2),
+        (case2, ship1)
+    ]
+
+    # ✅ 同じラベル防止
+    if case1 and case2:
         return jsonify({
-            "result": "⚠️ 読み取り失敗",
-            "code1": code1,
-            "code2": code2
+            "result": "⚠️ 同じCaseラベルの可能性"
+        })
+
+    if ship1 and ship2:
+        return jsonify({
+            "result": "⚠️ 同じShippingラベルの可能性"
         })
 
     # ✅ 判定
-    if code1 == code2:
-        result = "✅ OK"
-    else:
-        result = "❌ NG"
+    for c, s in pairs:
+        if c and s:
+            if c == s:
+                return jsonify({"result": "✅ OK"})
+            else:
+                return jsonify({"result": "❌ NG"})
 
-    return jsonify({
-        "code1": code1,
-        "code2": code2,
-        "result": result
-    })
+    return jsonify({"result": "⚠️ 読み取り失敗"})
 
 
 @app.route("/")
