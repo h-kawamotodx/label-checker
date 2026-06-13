@@ -14,13 +14,13 @@ def normalize_text(text):
     return text
 
 
-# ✅ 3桁コード抽出
+# ✅ 3桁抽出（最後を優先）
 def extract_code(text):
     text = normalize_text(text)
 
     nums = re.findall(r"\d{3}", text)
     if nums:
-        return nums[-1]  # 最後の3桁を採用
+        return nums[-1]
 
     return None
 
@@ -29,7 +29,7 @@ def extract_code(text):
 def detect_type(text):
     text = normalize_text(text)
 
-    # Case：末尾に3桁がある
+    # Case：末尾に3桁
     if re.search(r"\d{3}$", text):
         return "CASE"
 
@@ -52,15 +52,7 @@ def check():
     code1 = extract_code(text1)
     code2 = extract_code(text2)
 
-    # 🔴 ① 同じラベル（最優先）
-    if text1.strip() == text2.strip():
-        return jsonify({
-            "result": "⚠️ 同じラベルを2回スキャンしています",
-            "type1": type1,
-            "type2": type2
-        })
-
-    # 🔴 ② 同じ種類（Shipping×2 または Case×2）
+    # ✅ 同じ種類チェック（ここだけでOK）
     if type1 == type2:
         return jsonify({
             "result": "⚠️ 同じ種類のラベルです",
@@ -68,7 +60,7 @@ def check():
             "type2": type2
         })
 
-    # 🔴 ③ 読み取り失敗
+    # ✅ 読み取り失敗
     if not code1 or not code2:
         return jsonify({
             "result": "⚠️ 読み取り失敗",
@@ -76,7 +68,7 @@ def check():
             "type2": type2
         })
 
-    # ✅ ④ 正常判定
+    # ✅ 判定（最重要）
     if code1 == code2:
         result = "✅ OK"
     else:
