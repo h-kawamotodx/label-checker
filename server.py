@@ -28,15 +28,41 @@ def extract_code(text):
 
 @app.route("/check", methods=["POST"])
 def check():
-    # 🔥 ここが重要（強制表示）
+    data = request.json
+
+    text1 = data.get("text1", "")
+    text2 = data.get("text2", "")
+
+    code1 = extract_code(text1)
+    code2 = extract_code(text2)
+
+    # ✅ デバッグ用（確認したいとき用）
+    # return jsonify({"text1": text1, "text2": text2})
+
+    # ✅ 読み取り失敗
+    if not code1 or not code2:
+        return jsonify({
+            "result": "⚠️ 読み取り失敗",
+            "code1": code1,
+            "code2": code2
+        })
+
+    # ✅ 判定
+    if code1 == code2:
+        result = "✅ OK"
+    else:
+        result = "❌ NG"
+
     return jsonify({
-        "result": "🔥 新コード動いてる"
+        "code1": code1,
+        "code2": code2,
+        "result": result
     })
 
 
 @app.route("/")
 def home():
-    return "Server is running"
+    return "Server is running ✅"
 
 
 if __name__ == "__main__":
