@@ -14,41 +14,33 @@ def normalize_text(text):
     return text
 
 
-# ✅ ラベル種類判定（見出しは使わない）
-def detect_type(text):
+# ✅ CASE判定（KMX + 構造 + 末尾3桁）
+def is_case_label(text):
     text = normalize_text(text)
 
-    # KMXがあればCASE
-    if "KMX" in text:
-        return "CASE"
-
-    # CASE-NOがあればSHIPPING
-    if "CASE" in text and "NO" in text:
-        return "SHIPPING"
-
-    return "UNKNOWN"
+    # ✅ KMX行で最後に3桁がある構造だけを採用
+    match = re.search(r"KMX[-A-Z0-9/\.]*?(\d{3})$", text)
+    return bool(match)
 
 
-# ✅ SHIPPING：CASE-NOの下3桁
-def extract_shipping(text):
+# ✅ CASE：KMX行から末尾3桁を抽出
+def extract_case_code(text):
     text = normalize_text(text)
 
-    # CASE-NO周辺の3桁
-    match = re.search(r"CASE.*?NO.*?(\d{3})", text)
+    match = re.search(r"KMX[-A-Z0-9/\.]*?(\d{3})$", text)
     if match:
         return match.group(1)
 
     return None
 
 
-# ✅ CASE：KMX行の末尾3桁
-def extract_case(text):
+# ✅ SHIPPING：単純な3桁（Case側除外後に使う）
+def extract_shipping_code(text):
     text = normalize_text(text)
 
-    # KMXの行の末尾3桁
-    match = re.search(r"KMX[^\n]*?(\d{3})", text)
-    if match:
-        return match.group(1)
+    nums = re.findall(r"\b\d{3}\b", text)
+    if nums:
+        return nums[0]
 
     return None
 
@@ -60,36 +52,49 @@ def check():
     text1 = normalize_text(data.get("text1", ""))
     text2 = normalize_text(data.get("text2", ""))
 
-    type1 = detect_type(text1)
-    type2 = detect_type(text2)
+    # ✅ CASE判定（片方だけ採用🔥）
+    case1 = is_case_label(text1)
+    case2 = is_case_label(text2)
 
-    # ✅ 種類判定できない
-    if type1 == "UNKNOWN" or type2 == "UNKNOWN":
-        return jsonify({"result": "⚠️ ラベル識別失敗"})
-
-    # ✅ 同じ種類（同ラベル対策）
-    if type1 == type2:
+    # ✅ 両方CASE → 同じラベル
+    if case1 and case2:
         return jsonify({
-            "result": f"⚠️ 同じ{type1}ラベルの可能性"
+            "result": "⚠️ 同じCASEラベルの可能性"
         })
 
-    # ✅ 正しく抽出
-    if type1 == "SHIPPING":
-        ship = extract_shipping(text1)
-        case = extract_case(text2)
-    else:
-        ship = extract_shipping(text2)
-        case = extract_case(text1)
+    # ✅ CASEがどちらにも無い → エラー
+    if not case1 and not case2:
+        return jsonify({
+            "result": "⚠️ CASEラベルを認識できません"
+        })
 
-    # ✅ 抽出失敗
-    if not ship or not case:
-        return jsonify({"result": "⚠️ 読み取り失敗"})
+    # ✅ CASEとSHIPPINGを分ける
+    if case1:
+        case_text = text1
+        ship_text = text2
+    else:
+        case_text = text2
+        ship_text = text1
+
+    # ✅ 抽出
+    case_code = extract_case_code(case_text)
+    ship_code = extract_shipping_code(ship_text)
+
+    # ✅ 読み取り失敗
+    if not case_code or not ship_code:
+        return jsonify({
+            "result": "⚠️ 読み取り失敗"
+        })
 
     # ✅ 判定
-    if ship == case:
-        return jsonify({"result": "✅ OK"})
+    if case_code == ship_code:
+        return jsonify({
+            "result": "✅ OK"
+        })
     else:
-        return jsonify({"result": "❌ NG"})
+        return jsonify({
+            "result": "❌ NG"
+        })
 
 
 @app.route("/")
