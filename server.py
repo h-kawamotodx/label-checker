@@ -15,7 +15,32 @@ def normalize_text(text):
     return text
 
 
-# ✅ Case用（バーコード末尾3桁）
+# ✅ ラベル種類判定
+def detect_label_type(text):
+    text = normalize_text(text)
+
+    if "SHIPPING" in text:
+        return "SHIPPING"
+
+    if "CASE MARK" in text:
+        return "CASE"
+
+    return "UNKNOWN"
+
+
+# ✅ SHIPPING用（CASE-NOの下の3桁）
+def extract_shipping_code(text):
+    text = normalize_text(text)
+
+    # CASE-NO の近くから3桁取得
+    match = re.search(r"CASE[- ]?NO\.?\s*(\d{3})", text)
+    if match:
+        return match.group(1)
+
+    return None
+
+
+# ✅ CASE用（バーコード末尾3桁）
 def extract_case_code(text):
     text = normalize_text(text)
 
@@ -26,65 +51,43 @@ def extract_case_code(text):
     return None
 
 
-# ✅ Shipping用（CASE-NO付近の3桁）
-def extract_shipping_code(text):
-    text = normalize_text(text)
-
-    # CASE-NO周辺を優先して探す
-    match = re.search(r"CASE.*?(\d{3})", text)
-    if match:
-        return match.group(1)
-
-    # fallback（単独3桁）
-    nums = re.findall(r"\b\d{3}\b", text)
-    if nums:
-        return nums[0]
-
-    return None
-
-
 @app.route("/check", methods=["POST"])
 def check():
     data = request.json
 
-    text1 = data.get("text1", "")
-    text2 = data.get("text2", "")
+    text1 = normalize_text(data.get("text1", ""))
+    text2 = normalize_text(data.get("text2", ""))
 
-    # ✅ 両方から「Case」「Shipping」両方抽出してみる
-    case1 = extract_case_code(text1)
-    case2 = extract_case_code(text2)
+    type1 = detect_label_type(text1)
+    type2 = detect_label_type(text2)
 
-    ship1 = extract_shipping_code(text1)
-    ship2 = extract_shipping_code(text2)
+    # ✅ ラベル判定できない
+    if type1 == "UNKNOWN" or type2 == "UNKNOWN":
+        return jsonify({"result": "⚠️ ラベル識別できません"})
 
-    # ✅ 正しい組み合わせはこれだけ
-    # Case側の数字 = Shipping側の数字
-
-    pairs = [
-        (case1, ship2),
-        (case2, ship1)
-    ]
-
-    # ✅ 同じラベル防止
-    if case1 and case2:
+    # ✅ 同じ種類（同ラベル対策）
+    if type1 == type2:
         return jsonify({
-            "result": "⚠️ 同じCaseラベルの可能性"
+            "result": f"⚠️ 同じ{type1}ラベルを読み取っています"
         })
 
-    if ship1 and ship2:
-        return jsonify({
-            "result": "⚠️ 同じShippingラベルの可能性"
-        })
+    # ✅ 種類ごとに正しい方法で抽出
+    if type1 == "SHIPPING":
+        ship_code = extract_shipping_code(text1)
+        case_code = extract_case_code(text2)
+    else:
+        ship_code = extract_shipping_code(text2)
+        case_code = extract_case_code(text1)
+
+    # ✅ 抽出失敗
+    if not ship_code or not case_code:
+        return jsonify({"result": "⚠️ 読み取り失敗"})
 
     # ✅ 判定
-    for c, s in pairs:
-        if c and s:
-            if c == s:
-                return jsonify({"result": "✅ OK"})
-            else:
-                return jsonify({"result": "❌ NG"})
-
-    return jsonify({"result": "⚠️ 読み取り失敗"})
+    if ship_code == case_code:
+        return jsonify({"result": "✅ OK"})
+    else:
+        return jsonify({"result": "❌ NG"})
 
 
 @app.route("/")
