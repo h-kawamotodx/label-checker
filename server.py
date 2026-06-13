@@ -9,44 +9,46 @@ app = Flask(__name__)
 def normalize_text(text):
     text = text.upper()
     text = text.replace("O", "0")
-    text = text.replace("B", "8")
     text = text.replace("I", "1")
     text = text.replace("S", "5")
     return text
 
 
-# ✅ ラベル種類判定
-def detect_label_type(text):
+# ✅ ラベル種類判定（見出しは使わない）
+def detect_type(text):
     text = normalize_text(text)
 
-    if "SHIPPING" in text:
-        return "SHIPPING"
-
-    if "CASE MARK" in text:
+    # KMXがあればCASE
+    if "KMX" in text:
         return "CASE"
+
+    # CASE-NOがあればSHIPPING
+    if "CASE" in text and "NO" in text:
+        return "SHIPPING"
 
     return "UNKNOWN"
 
 
-# ✅ SHIPPING用（CASE-NOの下の3桁）
-def extract_shipping_code(text):
+# ✅ SHIPPING：CASE-NOの下3桁
+def extract_shipping(text):
     text = normalize_text(text)
 
-    # CASE-NO の近くから3桁取得
-    match = re.search(r"CASE[- ]?NO\.?\s*(\d{3})", text)
+    # CASE-NO周辺の3桁
+    match = re.search(r"CASE.*?NO.*?(\d{3})", text)
     if match:
         return match.group(1)
 
     return None
 
 
-# ✅ CASE用（バーコード末尾3桁）
-def extract_case_code(text):
+# ✅ CASE：KMX行の末尾3桁
+def extract_case(text):
     text = normalize_text(text)
 
-    match = re.search(r"\d{3}$", text)
+    # KMXの行の末尾3桁
+    match = re.search(r"KMX[^\n]*?(\d{3})", text)
     if match:
-        return match.group()
+        return match.group(1)
 
     return None
 
@@ -58,33 +60,33 @@ def check():
     text1 = normalize_text(data.get("text1", ""))
     text2 = normalize_text(data.get("text2", ""))
 
-    type1 = detect_label_type(text1)
-    type2 = detect_label_type(text2)
+    type1 = detect_type(text1)
+    type2 = detect_type(text2)
 
-    # ✅ ラベル判定できない
+    # ✅ 種類判定できない
     if type1 == "UNKNOWN" or type2 == "UNKNOWN":
-        return jsonify({"result": "⚠️ ラベル識別できません"})
+        return jsonify({"result": "⚠️ ラベル識別失敗"})
 
     # ✅ 同じ種類（同ラベル対策）
     if type1 == type2:
         return jsonify({
-            "result": f"⚠️ 同じ{type1}ラベルを読み取っています"
+            "result": f"⚠️ 同じ{type1}ラベルの可能性"
         })
 
-    # ✅ 種類ごとに正しい方法で抽出
+    # ✅ 正しく抽出
     if type1 == "SHIPPING":
-        ship_code = extract_shipping_code(text1)
-        case_code = extract_case_code(text2)
+        ship = extract_shipping(text1)
+        case = extract_case(text2)
     else:
-        ship_code = extract_shipping_code(text2)
-        case_code = extract_case_code(text1)
+        ship = extract_shipping(text2)
+        case = extract_case(text1)
 
     # ✅ 抽出失敗
-    if not ship_code or not case_code:
+    if not ship or not case:
         return jsonify({"result": "⚠️ 読み取り失敗"})
 
     # ✅ 判定
-    if ship_code == case_code:
+    if ship == case:
         return jsonify({"result": "✅ OK"})
     else:
         return jsonify({"result": "❌ NG"})
