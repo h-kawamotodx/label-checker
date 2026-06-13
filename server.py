@@ -28,30 +28,9 @@ def extract_code(text):
 
 @app.route("/check", methods=["POST"])
 def check():
-    data = request.json
-
-    text1 = data.get("text1", "")
-    text2 = data.get("text2", "")
-
-    code1 = extract_code(text1)
-    code2 = extract_code(text2)
-
-    # ✅ 読み取り失敗
-    if not code1 or not code2:
-        return jsonify({
-            "result": "⚠️ 読み取り失敗"
-        })
-
-    # ✅ 判定（これだけ）
-    if code1 == code2:
-        result = "✅ OK"
-    else:
-        result = "❌ NG"
-
+    # 🔥 ここが重要（強制表示）
     return jsonify({
-        "code1": code1,
-        "code2": code2,
-        "result": result
+        "result": "🔥 新コード動いてる"
     })
 
 
@@ -63,6 +42,3 @@ def home():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-return jsonify({
-    "result": "🔥 新コード動いてる"
-})
