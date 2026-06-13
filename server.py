@@ -1,48 +1,40 @@
 from flask import Flask, request, jsonify
 import re
+import os
 
 app = Flask(__name__)
 
-shipping_case = None
+@app.route("/check", methods=["POST"])
+def check():
+    data = request.json
 
-@app.route("/shipping", methods=["POST"])
-def shipping():
-    global shipping_case
-    text = request.json.get("text", "")
+    text1 = data.get("text1", "")
+    text2 = data.get("text2", "")
 
-    nums = re.findall(r"\d{3}", text)
-    shipping_case = nums[0] if nums else None
+    # 3桁抽出
+    nums1 = re.findall(r"\d{3}", text1)
+    nums2 = re.findall(r"\d{3}", text2)
 
-    return jsonify({"shipping": shipping_case})
+    code1 = nums1[-1] if nums1 else None
+    code2 = nums2[-1] if nums2 else None
 
+    if not code1 or not code2:
+        return jsonify({"result": "⚠️ 読み取り失敗"})
 
-@app.route("/case", methods=["POST"])
-def case():
-    global shipping_case
-    text = request.json.get("text", "")
-
-    match = re.search(r"(\d{3})$", text)
-    case_no = match.group(1) if match else None
-
-    if shipping_case and case_no:
-        if shipping_case == case_no:
-            result = "✅ OK"
-        else:
-            result = "❌ NG"
+    if code1 == code2:
+        result = "✅ OK"
     else:
-        result = "⚠️ 読み取り失敗"
+        result = "❌ NG"
 
     return jsonify({
-        "shipping": shipping_case,
-        "case": case_no,
+        "shipping": code1,
+        "case": code2,
         "result": result
     })
-
 
 @app.route("/")
 def home():
     return "Server is running"
-import os
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
