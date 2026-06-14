@@ -23,6 +23,20 @@ def extract_code(text):
     return "なし"
 
 
+# ✅ 見やすく整形（ここが今回のキモ🔥）
+def format_text(text):
+    # キーワードごとに改行
+    text = text.replace("CASE", "\nCASE")
+    text = text.replace("NO.", "\nNO.")
+    text = text.replace("NO ", "\nNO ")
+    text = text.replace("LOT", "\nLOT")
+    text = text.replace("CONTROL", "\nCONTROL")
+    text = text.replace("PART", "\nPART")
+    text = text.replace("QTY", "\nQTY")
+
+    return text.strip()
+
+
 @app.route("/check", methods=["POST"])
 def check():
     data = request.json or {}
@@ -30,13 +44,12 @@ def check():
     text1 = normalize_text(data.get("text1", ""))
     text2 = normalize_text(data.get("text2", ""))
 
-    # ✅ 改行を正しく変換
     text1 = text1.replace("\\n", "\n")
     text2 = text2.replace("\\n", "\n")
 
-    # ✅ 見やすく整形（スペースで改行🔥）
-    text1 = text1.replace(" ", "\n")
-    text2 = text2.replace(" ", "\n")
+    # ✅ 整形
+    text1 = format_text(text1)
+    text2 = format_text(text2)
 
     code1 = extract_code(text1)
     code2 = extract_code(text2)
@@ -49,22 +62,23 @@ def check():
     else:
         result = "❌ NG"
 
-    # ✅ 表示
     display_text = f"""
 ====================
 判定結果: {result}
 ====================
 
+🔢 コード
+{code1} / {code2}
+
+--------------------
+
 🔵 ラベル①
 {text1}
 
+--------------------
+
 🟢 ラベル②
 {text2}
-
---------------------
-🔢 抽出コード
-{code1} / {code2}
---------------------
 """
 
     return display_text
