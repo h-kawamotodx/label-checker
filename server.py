@@ -5,14 +5,14 @@ import os
 app = Flask(__name__)
 
 
-# ✅ OCR補正（最小限）
+# ✅ OCR補正（そのまま）
 def normalize_text(text):
     text = str(text)
     text = text.upper()
     return text
 
 
-# ✅ 3桁コード抽出
+# ✅ 3桁コード抽出（そのまま）
 def extract_code(text):
     nums = re.findall(r"\d{3}", text)
     if nums:
@@ -30,7 +30,7 @@ def check():
     code1 = extract_code(text1)
     code2 = extract_code(text2)
 
-    # ✅ 判定だけ
+    # ✅ 判定（そのまま）
     if code1 == "なし" or code2 == "なし":
         result = "⚠️ 読み取り失敗"
     elif code1 == code2:
@@ -38,16 +38,24 @@ def check():
     else:
         result = "❌ NG"
 
-    # ✅ 最小出力（整形しない）
-    output = f"""
-RESULT:{result}----------------
-CODE: {code1} / {code2}---------------
-LABEL 1:{text1}
+    # ✅ 🔥 表示だけ改善（ここだけ変えてる）
+    output = f"""\
+========================
+✅ 判定結果
+========================
+{result}
 
+🔢 コード
+------------------------
+{code1} / {code2}
 
-LABEL 2:{text2}
+🔵 LABEL 1
+------------------------
+{text1}
 
-
+🟢 LABEL 2
+------------------------
+{text2}
 """
 
     return output
