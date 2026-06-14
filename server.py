@@ -34,6 +34,10 @@ def check():
     text1 = text1.replace("\\n", "\n")
     text2 = text2.replace("\\n", "\n")
 
+    # ✅ 見やすく整形（スペースで改行🔥）
+    text1 = text1.replace(" ", "\n")
+    text2 = text2.replace(" ", "\n")
+
     code1 = extract_code(text1)
     code2 = extract_code(text2)
 
@@ -45,7 +49,7 @@ def check():
     else:
         result = "❌ NG"
 
-    # ✅ 表示（全文表示）
+    # ✅ 表示
     display_text = f"""
 ====================
 判定結果: {result}
@@ -63,7 +67,7 @@ def check():
 --------------------
 """
 
-    return display_text  # ← JSONじゃなく文字で返す
+    return display_text
 
 
 @app.route("/")
