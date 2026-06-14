@@ -1,11 +1,13 @@
 from flask import Flask, request
 import re
+import os
 
 app = Flask(__name__)
 
 
 # ✅ OCR補正
 def normalize_text(text):
+    text = str(text)
     text = text.upper()
     text = text.replace("O", "0")
     text = text.replace("I", "1")
@@ -15,23 +17,20 @@ def normalize_text(text):
 
 # ✅ 3桁抽出
 def extract_code(text):
-    text = normalize_text(text)
-
     nums = re.findall(r"\d{3}", text)
     if nums:
         return nums[-1]
-
-    return None
+    return "なし"
 
 
 @app.route("/check", methods=["POST"])
 def check():
-    data = request.json
+    data = request.json or {}
 
     text1 = normalize_text(data.get("text1", ""))
     text2 = normalize_text(data.get("text2", ""))
 
-    # ✅ 改行を正しく表示
+    # ✅ 改行を正しく変換
     text1 = text1.replace("\\n", "\n")
     text2 = text2.replace("\\n", "\n")
 
@@ -39,14 +38,14 @@ def check():
     code2 = extract_code(text2)
 
     # ✅ 判定
-    if not code1 or not code2:
+    if code1 == "なし" or code2 == "なし":
         result = "⚠️ 読み取り失敗"
     elif code1 == code2:
         result = "✅ OK"
     else:
         result = "❌ NG"
 
-    # ✅ 表示（全文そのまま見せる🔥）
+    # ✅ 表示（全文表示）
     display_text = f"""
 ====================
 判定結果: {result}
@@ -64,8 +63,7 @@ def check():
 --------------------
 """
 
-    # ✅ 文字列だけ返す（JSON使わない）
-    return display_text
+    return display_text  # ← JSONじゃなく文字で返す
 
 
 @app.route("/")
@@ -74,5 +72,5 @@ def home():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
-``
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
