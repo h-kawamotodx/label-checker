@@ -1,11 +1,11 @@
 from flask import Flask, request, jsonify
 import re
 import os
+from datetime import datetime
 
 app = Flask(__name__)
 
 
-# ✅ OCR補正
 def normalize_text(text):
     text = text.upper()
     text = text.replace("O", "0")
@@ -14,7 +14,6 @@ def normalize_text(text):
     return text
 
 
-# ✅ 3桁抽出（最後の3桁を採用）
 def extract_code(text):
     text = normalize_text(text)
 
@@ -23,6 +22,20 @@ def extract_code(text):
         return nums[-1]
 
     return None
+
+
+# ✅ ログ保存
+def save_log(text1, text2, code1, code2, result):
+    with open("log.txt", "a", encoding="utf-8") as f:
+        f.write(f"""
+{datetime.now()}
+result: {result}
+text1: {text1}
+text2: {text2}
+code1: {code1}
+code2: {code2}
+------------------------
+""")
 
 
 @app.route("/check", methods=["POST"])
@@ -43,7 +56,10 @@ def check():
     else:
         result = "❌ NG"
 
-    # ✅ 表示整形（ここがポイント🔥）
+    # ✅ ログ保存
+    save_log(text1, text2, code1, code2, result)
+
+    # ✅ 表示整形
     display_text = f"""
 ====================
 判定結果: {result}
@@ -62,7 +78,6 @@ def check():
 --------------------
 """
 
-    # ✅ 最後にまとめて返す
     return jsonify({
         "result": result,
         "display": display_text
