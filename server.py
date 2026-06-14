@@ -5,16 +5,27 @@ import os
 app = Flask(__name__)
 
 
+# ✅ OCR補正（誤認識対策）
 def normalize_text(text):
-    text = str(text)
-    text = text.upper()
+    text = str(text).upper()
+    text = text.replace("O", "0")  # O → 0
+    text = text.replace("I", "1")  # I → 1
+    text = text.replace("S", "5")  # S → 5（必要に応じて）
     return text
 
 
-def extract_code(text):
-    nums = re.findall(r"\d{3}", text)
-    if nums:
-        return nums[-1]
+# ✅ CASE NO抽出（3桁限定）
+def extract_case_no(text):
+    patterns = [
+        r"CASE[- ]?NO\.?\s*(\d{3})",
+        r"C/NO\.?\s*(\d{3})"
+    ]
+
+    for p in patterns:
+        match = re.search(p, text)
+        if match:
+            return match.group(1)
+
     return "なし"
 
 
@@ -22,35 +33,40 @@ def extract_code(text):
 def check():
     data = request.json or {}
 
+    # ✅ OCR入力
     text1 = normalize_text(data.get("text1", ""))
     text2 = normalize_text(data.get("text2", ""))
 
-    code1 = extract_code(text1)
-    code2 = extract_code(text2)
+    # ✅ CASE NO抽出
+    case1 = extract_case_no(text1)
+    case2 = extract_case_no(text2)
 
-    if code1 == "なし" or code2 == "なし":
-        result = "⚠️ 読み取り失敗"
-    elif code1 == code2:
-        result = "✅ OK"
+    # ✅ 判定
+    if case1 == case2 and case1 != "なし":
+        result = "✅✅ 完全一致"
+    elif case1 == "なし" or case2 == "なし":
+        result = "⚠️ CASE NO 読み取り失敗"
     else:
-        result = "❌ NG"
+        result = "🔥❌ NG（不一致）🔥"
 
+    # ✅ 表示
     output = f"""\
 ========================
-✅ 判定結果
+📦 判定結果
 ========================
 {result}
 
-🔢 コード
-------------------------
-{code1} / {code2}
+🧾 CASE NO
+{case1} / {case2}
 
-🔵 LABEL 1
 ------------------------
+
+🔵 SHIPPING LABEL
 {text1}
 
-🟢 LABEL 2
 ------------------------
+
+🟢 CASE MARK LABEL
 {text2}
 """
 
@@ -65,3 +81,4 @@ def home():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+    
