@@ -14,7 +14,7 @@ def normalize_text(text):
     return text
 
 
-# ✅ 3桁抽出
+# ✅ 3桁抽出（最後の3桁を採用）
 def extract_code(text):
     text = normalize_text(text)
 
@@ -35,29 +35,37 @@ def check():
     code1 = extract_code(text1)
     code2 = extract_code(text2)
 
-    # ✅ 読み取り失敗
-    if not code1 or not code2:
-        return jsonify({
-            "result": "⚠️ 読み取り失敗",
-            "text1": text1,
-            "text2": text2,
-            "code1": code1,
-            "code2": code2
-        })
-
     # ✅ 判定
-    if code1 == code2:
+    if not code1 or not code2:
+        result = "⚠️ 読み取り失敗"
+    elif code1 == code2:
         result = "✅ OK"
     else:
         result = "❌ NG"
 
-    # ✅ 表示（ここ追加🔥）
+    # ✅ 表示整形（ここがポイント🔥）
+    display_text = f"""
+====================
+判定結果: {result}
+====================
+
+🔵 ラベル①
+{text1}
+
+🟢 ラベル②
+{text2}
+
+--------------------
+🔢 抽出コード
+ラベル①: {code1}
+ラベル②: {code2}
+--------------------
+"""
+
+    # ✅ 最後にまとめて返す
     return jsonify({
-        "text1": text1,
-        "text2": text2,
-        "code1": code1,
-        "code2": code2,
-        "result": result
+        "result": result,
+        "display": display_text
     })
 
 
