@@ -40,12 +40,14 @@ def check():
 
     # ✅ 最小出力（整形しない）
     output = f"""
-RESULT: {result}
-CODE: {code1} / {code2}
-LABEL 1 
-{text1}
-LABEL 2 
-{text2}
+RESULT:{result}----------------
+CODE: {code1} / {code2}---------------
+LABEL 1:{text1}
+
+
+LABEL 2:{text2}
+
+
 """
 
     return output
