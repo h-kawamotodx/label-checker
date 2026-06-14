@@ -5,16 +5,23 @@ import os
 app = Flask(__name__)
 
 
+# ✅ OCR補正
 def normalize_text(text):
-    text = str(text)
-    text = text.upper()
-    return text
+    return str(text).upper()
 
 
-def extract_code(text):
-    nums = re.findall(r"\d{3}", text)
-    if nums:
-        return nums[-1]
+# ✅ CASE NO抽出（両対応）
+def extract_case_no(text):
+    patterns = [
+        r"CASE[- ]?NO\.?\s*(\d+)",
+        r"C/NO\.?\s*(\d+)"
+    ]
+
+    for p in patterns:
+        m = re.search(p, text)
+        if m:
+            return m.group(1)
+
     return "なし"
 
 
@@ -22,35 +29,55 @@ def extract_code(text):
 def check():
     data = request.json or {}
 
+    # ✅ 入力
     text1 = normalize_text(data.get("text1", ""))
     text2 = normalize_text(data.get("text2", ""))
 
-    code1 = extract_code(text1)
-    code2 = extract_code(text2)
+    barcode1 = data.get("barcode1", "")
+    barcode2 = data.get("barcode2", "")
 
-    if code1 == "なし" or code2 == "なし":
-        result = "⚠️ 読み取り失敗"
-    elif code1 == code2:
-        result = "✅ OK"
+    # ✅ バーコード：左から11桁
+    barcode1_11 = barcode1[:11]
+    barcode2_11 = barcode2[:11]
+
+    # ✅ CASE NO抽出
+    case1 = extract_case_no(text1)
+    case2 = extract_case_no(text2)
+
+    # ✅ 判定
+    barcode_match = (barcode1_11 == barcode2_11)
+    case_match = (case1 == case2)
+
+    if barcode_match and case_match:
+        final = "✅✅ 完全一致（安全）"
+    elif barcode_match:
+        final = "⚠️ バーコード一致（CASE要確認）"
+    elif case_match:
+        final = "⚠️ CASE一致（バーコード不一致）"
     else:
-        result = "❌ NG"
+        final = "❌ NG（不一致）"
 
+    # ✅ 表示
     output = f"""\
 ========================
-✅ 判定結果
+📦 総合判定
 ========================
-{result}
+{final}
 
-🔢 コード
-------------------------
-{code1} / {code2}
+🏷 バーコード（11桁）
+{barcode1_11} / {barcode2_11}
 
-🔵 LABEL 1
+🧾 CASE NO
+{case1} / {case2}
+
 ------------------------
+
+🔵 SHIPPING LABEL
 {text1}
 
-🟢 LABEL 2
 ------------------------
+
+🟢 CASE MARK LABEL
 {text2}
 """
 
